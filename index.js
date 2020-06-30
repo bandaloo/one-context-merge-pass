@@ -127,9 +127,7 @@ window.onload = function () {
     }
   );
 
-  // TODO replace with full render (which will call animation loop)
   fullRender();
-  //sceneRender();
 };
 
 function makeProgram(fShaderSource) {
@@ -157,25 +155,15 @@ void main() {
   return program;
 }
 
-// keep track of time via incremental frame counter
-let time = 0;
-
-function sceneRender() {
-  // increment time (really frames)
-  time++;
-
+function sceneRender(time) {
   for (let i = 0; i < programs.length; i++) {
     const program = programs[i];
-    //const texture = textures[i];
     const framebuffer = framebuffers[i];
     const location = locations[i];
 
     // after binding this framebuffer, every time we call `gl.drawArrays` it
     // will render out to the texture, since we attached a texture to the
     // framebuffer
-    // prettier-ignore
-    //gl.bindFramebuffer(gl.FRAMEBUFFER, i < programs.length - 1 ? framebuffer : null);
-    // TODO get rid of this
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
     // use the next draw program
@@ -187,8 +175,6 @@ function sceneRender() {
     // draw triangles using the array buffer from index 0 to 6 (6 is count)
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
-
-  //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 function makeTexture() {
@@ -211,9 +197,9 @@ function makeTexture() {
   return tex;
 }
 
-function fullRender() {
-  sceneRender();
-  merger.draw(time / 60);
+function fullRender(time = 0) {
+  const centiseconds = time / 10;
+  sceneRender(centiseconds); // updates textures before merger uses them
+  merger.draw(centiseconds);
   window.requestAnimationFrame(fullRender);
-  //window.setTimeout(fullRender, 500);
 }
