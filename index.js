@@ -13,52 +13,40 @@ let locations = [];
 /** @type {MP.Merger} */
 let merger;
 
-const shaderToyDefault = `
-#ifdef GL_ES
+const common = `#ifdef GL_ES
 precision mediump float;
 #endif
-
 uniform mediump vec2 u_resolution;
-uniform mediump float u_time;
-void main() {
+uniform mediump float u_time;\n`;
+
+const shaderToyDefault = `void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   vec3 col = 0.5 + 0.5 * cos(u_time + uv.xyx + vec3(0,2,4));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-const blueWaves = `
-#ifdef GL_ES
-precision mediump float;
-#endif
-
-uniform mediump vec2 u_resolution;
-uniform mediump float u_time;
-void main() {
+const blueWaves = `void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
-  vec3 col = vec3(0., 0., 0.5 + 0.5 * cos(u_time + uv.x * 20.));
+  vec3 col = vec3(0., 0., 0.5 + 0.5 * cos(u_time * -2. + uv.x * 40.));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-const redRectangles = `
-#ifdef GL_ES
-precision mediump float;
-#endif
-
-uniform mediump vec2 u_resolution;
-uniform mediump float u_time;
-void main() {
+const redRectangles = `void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
-  vec3 col = vec3(ceil(0.5 * cos(u_time + uv.x * 20.) * cos(u_time + uv.y * 10.)), 0., 0.);
-  gl_FragColor = vec4(col, 1.0);
+  float c = ceil(mod((uv.x + u_time / 9. + .5 * ceil(mod(uv.y * 9., 1.) - .5)) * 9., 1.) - .5);
+  gl_FragColor = vec4(c, c, c, 1.0);
 }`;
 
-let sources = [shaderToyDefault, redRectangles, blueWaves];
+const sources = [shaderToyDefault, redRectangles, blueWaves];
 
-window.onload = function () {
+window.onload = () => {
   const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById(
     "gl"
   ));
   gl = canvas.getContext("webgl2");
+
+  // not necessary but this lets you fullscreen the canvas by clicking on it
+  canvas.addEventListener("click", () => canvas.requestFullscreen());
 
   // create a buffer object to store vertices
   const buffer = gl.createBuffer();
@@ -66,8 +54,8 @@ window.onload = function () {
   // point buffer at graphic context's array buffer
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 
-  // prettier-ignore
-  const triangles = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+  const points = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1];
+  const triangles = new Float32Array(points);
 
   // initialize memory for buffer and populate it; give open gl hint contents
   // will not change dynamically
@@ -78,7 +66,7 @@ window.onload = function () {
     const program = makeProgram(source);
     gl.useProgram(program);
 
-    // find a pointer to the uniform "time" in our fragment shader
+    // find a pointer to the time uniform in our fragment shader
     const loc = {
       time: gl.getUniformLocation(program, "u_time"),
       res: gl.getUniformLocation(program, "u_resolution"),
@@ -123,7 +111,7 @@ window.onload = function () {
     gl,
     {
       // color information is shader toy default
-      channels: textures.slice(1), // red rectangles and blue waves
+      channels: textures.slice(1), // red rectangles and blue waves for channels
     }
   );
 
@@ -143,7 +131,7 @@ void main() {
 
   // create fragment shader
   const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fragmentShader, fShaderSource);
+  gl.shaderSource(fragmentShader, common + fShaderSource);
   gl.compileShader(fragmentShader);
   console.log(gl.getShaderInfoLog(fragmentShader));
 
@@ -162,15 +150,15 @@ function sceneRender(time) {
     const location = locations[i];
 
     // after binding this framebuffer, every time we call `gl.drawArrays` it
-    // will render out to the texture, since we attached a texture to the
-    // framebuffer
+    // will render out to the texture (since we attached a texture to each
+    // framebuffer)
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
     // use the next draw program
     gl.useProgram(program);
 
     // update time on CPU and GPU
-    gl.uniform1f(location.time, time / 60);
+    gl.uniform1f(location.time, time);
 
     // draw triangles using the array buffer from index 0 to 6 (6 is count)
     gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -198,8 +186,8 @@ function makeTexture() {
 }
 
 function fullRender(time = 0) {
-  const centiseconds = time / 10;
-  sceneRender(centiseconds); // updates textures before merger uses them
-  merger.draw(centiseconds);
+  const seconds = time / 1000;
+  sceneRender(seconds); // updates textures before merger uses them
+  merger.draw(seconds);
   window.requestAnimationFrame(fullRender);
 }

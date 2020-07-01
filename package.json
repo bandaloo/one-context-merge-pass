@@ -13,6 +13,7 @@
   "devDependencies": {
     "@babel/core": "^7.10.4",
     "@babel/preset-env": "^7.10.4",
+    "@bandaloo/merge-pass": "^0.4.2",
     "babelify": "^10.0.0",
     "browserify": "^16.5.1",
     "core-js": "^3.6.5",
@@ -37,5 +38,6 @@
         }
       ]
     ]
-  }
+  },
+  "dependencies": {}
 }
