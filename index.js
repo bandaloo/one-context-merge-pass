@@ -45,6 +45,9 @@ window.onload = () => {
   ));
   gl = canvas.getContext("webgl2");
 
+  // add extension to make floating point textures renderable
+  gl.getExtension("EXT_color_buffer_float");
+
   // not necessary but this lets you fullscreen the canvas by clicking on it
   canvas.addEventListener("click", () => canvas.requestFullscreen());
 
@@ -61,6 +64,7 @@ window.onload = () => {
   // will not change dynamically
   gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
 
+  let counter = 0;
   for (const source of sources) {
     // make program
     const program = makeProgram(source);
@@ -84,7 +88,8 @@ window.onload = () => {
     programs.push(program);
 
     // add texture to list
-    const tex = makeTexture();
+    // as a test we'll make the second texture a floating point texture
+    const tex = makeTexture(counter === 1);
     textures.push(tex);
 
     // attach texture as first color attachment
@@ -100,6 +105,7 @@ window.onload = () => {
 
     // add framebuffer to list
     framebuffers.push(framebuffer);
+    counter++;
   }
 
   merger = new MP.Merger(
@@ -165,21 +171,28 @@ function sceneRender(time) {
   }
 }
 
-function makeTexture() {
+function makeTexture(float = false) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(
     gl.TEXTURE_2D,
     0, // level
-    gl.RGBA, // internal format
+    float ? gl.RGBA32F : gl.RGBA, // internal format
     gl.drawingBufferWidth,
     gl.drawingBufferHeight,
     0, // border
-    gl.RGBA, // format
-    gl.UNSIGNED_BYTE, // type
+    float ? gl.RGBA : gl.RGBA, // format
+    float ? gl.FLOAT : gl.UNSIGNED_BYTE, // type
     null // data
   );
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  // you can't do linear filtering on a floating point texture
+  if (float) {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  } else {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  }
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   return tex;
