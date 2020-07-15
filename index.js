@@ -4,8 +4,6 @@ import * as MP from "@bandaloo/merge-pass";
 let gl;
 /** @type {WebGLUniformLocation[]} */
 let programs = [];
-/** @type {WebGLTexture[]} */
-let textures = [];
 /** @type {WebGLFramebuffer[]} */
 let framebuffers = [];
 /** @type {{time: WebGLUniformLocation, res: WebGLUniformLocation}[]} */
@@ -39,6 +37,9 @@ const redRectangles = `void main() {
 
 const sources = [shaderToyDefault, redRectangles, blueWaves];
 
+/** @type {WebGLFramebuffer} */
+let framebuffer;
+
 window.onload = () => {
   const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById(
     "gl"
@@ -60,6 +61,9 @@ window.onload = () => {
   // initialize memory for buffer and populate it; give open gl hint contents
   // will not change dynamically
   gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+
+  /** @type {WebGLTexture[]} */
+  let textures = [];
 
   for (const source of sources) {
     // make program
@@ -87,20 +91,12 @@ window.onload = () => {
     const tex = makeTexture();
     textures.push(tex);
 
-    // attach texture as first color attachment
-    const framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0, // attachment
-      gl.TEXTURE_2D,
-      tex, // target texture
-      0 // level
-    );
-
     // add framebuffer to list
-    framebuffers.push(framebuffer);
+    //framebuffers.push(framebuffer);
   }
+
+  framebuffer = gl.createFramebuffer();
+  //gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
   merger = new MP.Merger(
     [
@@ -144,15 +140,22 @@ void main() {
 }
 
 function sceneRender(time) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   for (let i = 0; i < programs.length; i++) {
     const program = programs[i];
-    const framebuffer = framebuffers[i];
+    //const framebuffer = framebuffers[i];
     const location = locations[i];
 
-    // after binding this framebuffer, every time we call `gl.drawArrays` it
-    // will render out to the texture (since we attached a texture to each
-    // framebuffer)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    // IMPORTANT!! change the texture attachment of your framebuffer to the
+    // texture in the merger. due to the implementation of `target`, channel
+    // textures, the front texture and the back texture get shuffled around.
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0, // attachment
+      gl.TEXTURE_2D,
+      i === 0 ? merger.tex.back.tex : merger.tex.bufTextures[i - 1].tex, // target texture
+      0 // level
+    );
 
     // use the next draw program
     gl.useProgram(program);
