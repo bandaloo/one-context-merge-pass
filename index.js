@@ -4,8 +4,6 @@ import * as MP from "@bandaloo/merge-pass";
 let gl;
 /** @type {WebGLUniformLocation[]} */
 let programs = [];
-/** @type {WebGLFramebuffer[]} */
-let framebuffers = [];
 /** @type {{time: WebGLUniformLocation, res: WebGLUniformLocation}[]} */
 let locations = [];
 /** @type {MP.Merger} */
@@ -90,18 +88,15 @@ window.onload = () => {
     // add texture to list
     const tex = makeTexture();
     textures.push(tex);
-
-    // add framebuffer to list
-    //framebuffers.push(framebuffer);
   }
 
   framebuffer = gl.createFramebuffer();
-  //gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
   merger = new MP.Merger(
     [
       MP.brightness(MP.op(-0.9, "*", MP.getcomp(MP.channel(1), "b"))),
       MP.godrays(),
+      //MP.input(), // uncomment to see that `input` works, even with textures
     ],
     textures[0],
     gl,
